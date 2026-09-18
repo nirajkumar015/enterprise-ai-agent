@@ -1,0 +1,10 @@
+google-genai
+python-dotenv
+fastapi
+uvicorn
+pydantic
+sqlalchemy
+psycopg2-binary
+scikit-learn==1.5.2
+pandas
+numpy
