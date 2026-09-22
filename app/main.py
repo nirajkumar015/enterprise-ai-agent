@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Customer, Product, Order, SupportTicket
 
+
 app = FastAPI(
     title="Enterprise AI Knowledge & Support Agent",
     description="AI-powered enterprise knowledge and support platform",
@@ -19,6 +20,10 @@ def root():
     }
 
 
+# -------------------------
+# Customers
+# -------------------------
+
 @app.get("/customers")
 def get_customers(db: Session = Depends(get_db)):
     customers = db.query(Customer).all()
@@ -32,6 +37,10 @@ def get_customers(db: Session = Depends(get_db)):
         for customer in customers
     ]
 
+
+# -------------------------
+# Products
+# -------------------------
 
 @app.get("/products")
 def get_products(db: Session = Depends(get_db)):
@@ -49,6 +58,10 @@ def get_products(db: Session = Depends(get_db)):
     ]
 
 
+# -------------------------
+# Orders
+# -------------------------
+
 @app.get("/orders")
 def get_orders(db: Session = Depends(get_db)):
     orders = db.query(Order).all()
@@ -65,6 +78,10 @@ def get_orders(db: Session = Depends(get_db)):
     ]
 
 
+# -------------------------
+# Support Tickets
+# -------------------------
+
 @app.get("/tickets")
 def get_tickets(db: Session = Depends(get_db)):
     tickets = db.query(SupportTicket).all()
@@ -80,3 +97,32 @@ def get_tickets(db: Session = Depends(get_db)):
         }
         for ticket in tickets
     ]
+
+
+# -------------------------
+# Ticket NLP Analysis
+# -------------------------
+
+@app.get("/tickets/analyze")
+def analyze_tickets(db: Session = Depends(get_db)):
+    from ml.ticket_nlp import analyze_ticket
+
+    tickets = db.query(SupportTicket).all()
+
+    results = []
+
+    for ticket in tickets:
+        analysis = analyze_ticket(ticket.description)
+
+        results.append(
+            {
+                "ticket_id": ticket.ticket_id,
+                "subject": ticket.subject,
+                "description": ticket.description,
+                "sentiment": analysis["sentiment"],
+                "category": analysis["category"],
+                "current_priority": ticket.priority,
+            }
+        )
+
+    return results
