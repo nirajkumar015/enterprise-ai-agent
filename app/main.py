@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Customer
+from app.models import Customer, Product, Order, SupportTicket
 
 app = FastAPI(
     title="Enterprise AI Knowledge & Support Agent",
@@ -30,4 +30,53 @@ def get_customers(db: Session = Depends(get_db)):
             "email": customer.email,
         }
         for customer in customers
+    ]
+
+
+@app.get("/products")
+def get_products(db: Session = Depends(get_db)):
+    products = db.query(Product).all()
+
+    return [
+        {
+            "product_id": product.product_id,
+            "name": product.name,
+            "category": product.category,
+            "price": float(product.price),
+            "stock_quantity": product.stock_quantity,
+        }
+        for product in products
+    ]
+
+
+@app.get("/orders")
+def get_orders(db: Session = Depends(get_db)):
+    orders = db.query(Order).all()
+
+    return [
+        {
+            "order_id": order.order_id,
+            "customer_id": order.customer_id,
+            "product_id": order.product_id,
+            "quantity": order.quantity,
+            "status": order.status,
+        }
+        for order in orders
+    ]
+
+
+@app.get("/tickets")
+def get_tickets(db: Session = Depends(get_db)):
+    tickets = db.query(SupportTicket).all()
+
+    return [
+        {
+            "ticket_id": ticket.ticket_id,
+            "customer_id": ticket.customer_id,
+            "subject": ticket.subject,
+            "description": ticket.description,
+            "status": ticket.status,
+            "priority": ticket.priority,
+        }
+        for ticket in tickets
     ]
