@@ -1,0 +1,31 @@
+PRODUCT TROUBLESHOOTING GUIDE
+
+Laptop Does Not Turn On:
+1. Make sure the power adapter is connected correctly.
+2. Check whether the charging indicator is active.
+3. Try another compatible power outlet.
+4. Disconnect external devices and try turning the laptop on again.
+5. If the laptop still does not turn on, contact technical support.
+
+Device Not Charging:
+1. Check the charging cable and adapter.
+2. Make sure the connector is properly inserted.
+3. Try a different compatible charger if available.
+4. Restart the device.
+5. If the problem continues, contact support.
+
+Wireless Mouse Not Working:
+1. Check the battery.
+2. Make sure the wireless receiver is connected.
+3. Reconnect the receiver.
+4. Restart the computer.
+5. Try the mouse on another compatible computer.
+
+Keyboard Not Working:
+1. Reconnect the keyboard.
+2. Check the USB or wireless connection.
+3. Restart the computer.
+4. Test another USB port if applicable.
+5. Contact support if the issue continues.
+
+If basic troubleshooting does not resolve the issue, customers should contact technical support.
