@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Customer, Product, Order, SupportTicket
+from ml.ticket_nlp import analyze_ticket
+from ml.priority_predictor import predict_priority
 
 
 app = FastAPI(
@@ -12,6 +14,10 @@ app = FastAPI(
 )
 
 
+# =========================================================
+# ROOT
+# =========================================================
+
 @app.get("/")
 def root():
     return {
@@ -20,12 +26,14 @@ def root():
     }
 
 
-# -------------------------
-# Customers
-# -------------------------
+# =========================================================
+# CUSTOMERS
+# =========================================================
 
 @app.get("/customers")
-def get_customers(db: Session = Depends(get_db)):
+def get_customers(
+    db: Session = Depends(get_db)
+):
     customers = db.query(Customer).all()
 
     return [
@@ -38,12 +46,14 @@ def get_customers(db: Session = Depends(get_db)):
     ]
 
 
-# -------------------------
-# Products
-# -------------------------
+# =========================================================
+# PRODUCTS
+# =========================================================
 
 @app.get("/products")
-def get_products(db: Session = Depends(get_db)):
+def get_products(
+    db: Session = Depends(get_db)
+):
     products = db.query(Product).all()
 
     return [
@@ -58,12 +68,14 @@ def get_products(db: Session = Depends(get_db)):
     ]
 
 
-# -------------------------
-# Orders
-# -------------------------
+# =========================================================
+# ORDERS
+# =========================================================
 
 @app.get("/orders")
-def get_orders(db: Session = Depends(get_db)):
+def get_orders(
+    db: Session = Depends(get_db)
+):
     orders = db.query(Order).all()
 
     return [
@@ -78,12 +90,14 @@ def get_orders(db: Session = Depends(get_db)):
     ]
 
 
-# -------------------------
-# Support Tickets
-# -------------------------
+# =========================================================
+# SUPPORT TICKETS
+# =========================================================
 
 @app.get("/tickets")
-def get_tickets(db: Session = Depends(get_db)):
+def get_tickets(
+    db: Session = Depends(get_db)
+):
     tickets = db.query(SupportTicket).all()
 
     return [
@@ -99,29 +113,59 @@ def get_tickets(db: Session = Depends(get_db)):
     ]
 
 
-# -------------------------
-# Ticket NLP Analysis
-# -------------------------
+# =========================================================
+# TICKET ANALYSIS
+# =========================================================
 
 @app.get("/tickets/analyze")
-def analyze_tickets(db: Session = Depends(get_db)):
-    from ml.ticket_nlp import analyze_ticket
-
+def analyze_tickets(
+    db: Session = Depends(get_db)
+):
     tickets = db.query(SupportTicket).all()
 
     results = []
 
     for ticket in tickets:
-        analysis = analyze_ticket(ticket.description)
+
+        # ---------------------------------------------
+        # NLP analysis
+        # ---------------------------------------------
+
+        nlp_result = analyze_ticket(
+            ticket.description
+        )
+
+        # ---------------------------------------------
+        # ML priority prediction
+        # ---------------------------------------------
+
+        priority_result = predict_priority(
+            ticket_type=nlp_result["category"],
+            subject=ticket.subject,
+            description=ticket.description,
+        )
+
+        # ---------------------------------------------
+        # Combined result
+        # ---------------------------------------------
 
         results.append(
             {
                 "ticket_id": ticket.ticket_id,
                 "subject": ticket.subject,
                 "description": ticket.description,
-                "sentiment": analysis["sentiment"],
-                "category": analysis["category"],
+
+                "sentiment": nlp_result["sentiment"],
+                "category": nlp_result["category"],
+
+                "predicted_priority": priority_result["priority"],
+                "priority_confidence": round(
+                    priority_result["confidence"],
+                    4
+                ),
+
                 "current_priority": ticket.priority,
+                "status": ticket.status,
             }
         )
 

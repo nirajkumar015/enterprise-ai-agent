@@ -1,4 +1,5 @@
 import pandas as pd
+import joblib
 
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -14,7 +15,14 @@ from sklearn.metrics import (
 from xgboost import XGBClassifier
 
 
+# =========================================================
+# CONFIGURATION
+# =========================================================
+
 DATA_PATH = "data/enterprise_priority_dataset.csv"
+
+MODEL_PATH = "ml/priority_model.joblib"
+VECTORIZER_PATH = "ml/tfidf_vectorizer.joblib"
 
 
 # =========================================================
@@ -86,7 +94,7 @@ print(f"Testing matrix:  {X_test_tfidf.shape}")
 
 
 # =========================================================
-# 5. LABEL ENCODING FOR XGBOOST
+# 5. LABEL ENCODING
 # =========================================================
 
 label_encoder = LabelEncoder()
@@ -94,7 +102,9 @@ label_encoder = LabelEncoder()
 y_train_encoded = label_encoder.fit_transform(y_train)
 y_test_encoded = label_encoder.transform(y_test)
 
-print("\nClass mapping:")
+print("\nCLASS MAPPING")
+print("=" * 60)
+
 for number, label in enumerate(label_encoder.classes_):
     print(f"{number} -> {label}")
 
@@ -103,7 +113,7 @@ for number, label in enumerate(label_encoder.classes_):
 # 6. LOGISTIC REGRESSION
 # =========================================================
 
-print("\n\nTRAINING LOGISTIC REGRESSION...")
+print("\nTRAINING LOGISTIC REGRESSION...")
 print("=" * 60)
 
 logistic_model = LogisticRegression(
@@ -111,9 +121,14 @@ logistic_model = LogisticRegression(
     random_state=42,
 )
 
-logistic_model.fit(X_train_tfidf, y_train)
+logistic_model.fit(
+    X_train_tfidf,
+    y_train
+)
 
-logistic_pred = logistic_model.predict(X_test_tfidf)
+logistic_pred = logistic_model.predict(
+    X_test_tfidf
+)
 
 logistic_accuracy = accuracy_score(
     y_test,
@@ -194,28 +209,28 @@ xgb_accuracy = accuracy_score(
 print("\n\nMODEL COMPARISON")
 print("=" * 60)
 
-comparison = pd.DataFrame({
-    "Model": [
-        "Logistic Regression",
-        "Random Forest",
-        "XGBoost",
-    ],
-    "Accuracy": [
-        logistic_accuracy,
-        random_forest_accuracy,
-        xgb_accuracy,
-    ],
-})
+comparison = pd.DataFrame(
+    {
+        "Model": [
+            "Logistic Regression",
+            "Random Forest",
+            "XGBoost",
+        ],
+        "Accuracy": [
+            logistic_accuracy,
+            random_forest_accuracy,
+            xgb_accuracy,
+        ],
+    }
+)
 
 print(
-    comparison.to_string(
-        index=False
-    )
+    comparison.to_string(index=False)
 )
 
 
 # =========================================================
-# 10. DETAILED REPORTS
+# 10. LOGISTIC REGRESSION REPORT
 # =========================================================
 
 print("\n\nLOGISTIC REGRESSION REPORT")
@@ -229,6 +244,10 @@ print(
 )
 
 
+# =========================================================
+# 11. RANDOM FOREST REPORT
+# =========================================================
+
 print("\nRANDOM FOREST REPORT")
 print("=" * 60)
 
@@ -239,6 +258,10 @@ print(
     )
 )
 
+
+# =========================================================
+# 12. XGBOOST REPORT
+# =========================================================
 
 print("\nXGBOOST REPORT")
 print("=" * 60)
@@ -252,7 +275,7 @@ print(
 
 
 # =========================================================
-# 11. CONFUSION MATRICES
+# 13. CONFUSION MATRICES
 # =========================================================
 
 print("\n\nLOGISTIC REGRESSION CONFUSION MATRIX")
@@ -289,7 +312,28 @@ print(
 
 
 # =========================================================
-# 12. SAMPLE PREDICTIONS
+# 14. SAVE LOGISTIC REGRESSION MODEL
+# =========================================================
+
+joblib.dump(
+    logistic_model,
+    MODEL_PATH
+)
+
+joblib.dump(
+    vectorizer,
+    VECTORIZER_PATH
+)
+
+print("\n\nMODEL SAVING")
+print("=" * 60)
+
+print(f"Model saved to:      {MODEL_PATH}")
+print(f"Vectorizer saved to: {VECTORIZER_PATH}")
+
+
+# =========================================================
+# 15. SAMPLE PREDICTIONS
 # =========================================================
 
 sample_tickets = [
@@ -315,27 +359,20 @@ sample_tickets = [
     ),
 ]
 
+
 sample_text = [
     ticket_type + " " + subject + " " + description
     for ticket_type, subject, description in sample_tickets
 ]
 
-sample_tfidf = vectorizer.transform(sample_text)
+
+sample_tfidf = vectorizer.transform(
+    sample_text
+)
+
 
 logistic_samples = logistic_model.predict(
     sample_tfidf
-)
-
-rf_samples = random_forest_model.predict(
-    sample_tfidf
-)
-
-xgb_samples_encoded = xgb_model.predict(
-    sample_tfidf
-)
-
-xgb_samples = label_encoder.inverse_transform(
-    xgb_samples_encoded.astype(int)
 )
 
 
@@ -348,24 +385,90 @@ for i, ticket in enumerate(sample_tickets):
     print(ticket[2])
 
     print(
-        f"Logistic Regression: {logistic_samples[i]}"
-    )
-
-    print(
-        f"Random Forest:       {rf_samples[i]}"
-    )
-
-    print(
-        f"XGBoost:             {xgb_samples[i]}"
+        f"Predicted Priority: {logistic_samples[i]}"
     )
 
 
 # =========================================================
-# 13. FINAL NOTE
+# 16. PREDICTION FUNCTION
+# =========================================================
+
+def predict_priority(
+    ticket_type,
+    subject,
+    description
+):
+    """
+    Predict ticket priority using the trained
+    Logistic Regression model.
+    """
+
+    text = (
+        str(ticket_type)
+        + " "
+        + str(subject)
+        + " "
+        + str(description)
+    )
+
+    text_tfidf = vectorizer.transform(
+        [text]
+    )
+
+    prediction = logistic_model.predict(
+        text_tfidf
+    )[0]
+
+    probabilities = logistic_model.predict_proba(
+        text_tfidf
+    )[0]
+
+    probability_map = dict(
+        zip(
+            logistic_model.classes_,
+            probabilities
+        )
+    )
+
+    confidence = float(
+        max(probabilities)
+    )
+
+    return {
+        "priority": prediction,
+        "confidence": confidence,
+        "probabilities": {
+            key: float(value)
+            for key, value in probability_map.items()
+        },
+    }
+
+
+# =========================================================
+# 17. FUNCTION TEST
+# =========================================================
+
+if __name__ == "__main__":
+
+    result = predict_priority(
+        "Technical issue",
+        "Laptop stopped working",
+        "My laptop suddenly stopped working and I need immediate assistance."
+    )
+
+    print("\n\nFUNCTION TEST")
+    print("=" * 60)
+
+    print(result)
+
+
+# =========================================================
+# IMPORTANT NOTE
 # =========================================================
 
 print("\n\nIMPORTANT")
 print("=" * 60)
+
 print(
     "These results are from a controlled synthetic "
     "development dataset."
