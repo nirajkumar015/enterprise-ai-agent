@@ -4,7 +4,7 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-from document_loader import load_and_chunk_documents
+from .document_loader import load_and_chunk_documents
 
 
 # Project paths
