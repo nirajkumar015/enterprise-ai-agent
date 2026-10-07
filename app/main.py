@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Customer, Product, Order, SupportTicket
+from app.agent_router import route_question
 from ml.ticket_nlp import analyze_ticket
 from ml.priority_predictor import predict_priority
 from rag_pipeline import answer_question
@@ -16,17 +17,9 @@ app = FastAPI(
 )
 
 
-# ---------------------------------------------------------
-# Request Models
-# ---------------------------------------------------------
-
 class ChatRequest(BaseModel):
     question: str
 
-
-# ---------------------------------------------------------
-# Root Endpoint
-# ---------------------------------------------------------
 
 @app.get("/")
 def root():
@@ -36,31 +29,59 @@ def root():
     }
 
 
-# ---------------------------------------------------------
-# RAG Chat Endpoint
-# ---------------------------------------------------------
-
 @app.post("/chat")
 def chat(request: ChatRequest):
-    """
-    Answer a user question using the RAG pipeline.
-    """
 
-    result = answer_question(request.question)
+    route = route_question(request.question)
 
-    return {
-        "question": request.question,
-        "answer": result["answer"],
-        "sources": result["sources"],
-    }
+    if route == "KNOWLEDGE":
 
+        result = answer_question(request.question)
 
-# ---------------------------------------------------------
-# Customer Endpoint
-# ---------------------------------------------------------
+        return {
+            "question": request.question,
+            "route": route,
+            "answer": result["answer"],
+            "sources": result["sources"],
+        }
+
+    elif route == "ANALYTICS":
+
+        return {
+            "question": request.question,
+            "route": route,
+            "answer": (
+                "This question requires the business "
+                "database analytics tool."
+            ),
+        }
+
+    elif route == "TICKET":
+
+        return {
+            "question": request.question,
+            "route": route,
+            "answer": (
+                "This question requires the ticket "
+                "analysis tool."
+            ),
+        }
+
+    else:
+
+        return {
+            "question": request.question,
+            "route": "UNSUPPORTED",
+            "answer": (
+                "I can currently answer company knowledge "
+                "questions and selected business support queries."
+            ),
+        }
+
 
 @app.get("/customers")
 def get_customers(db: Session = Depends(get_db)):
+
     customers = db.query(Customer).all()
 
     return [
@@ -73,12 +94,9 @@ def get_customers(db: Session = Depends(get_db)):
     ]
 
 
-# ---------------------------------------------------------
-# Product Endpoint
-# ---------------------------------------------------------
-
 @app.get("/products")
 def get_products(db: Session = Depends(get_db)):
+
     products = db.query(Product).all()
 
     return [
@@ -93,12 +111,9 @@ def get_products(db: Session = Depends(get_db)):
     ]
 
 
-# ---------------------------------------------------------
-# Order Endpoint
-# ---------------------------------------------------------
-
 @app.get("/orders")
 def get_orders(db: Session = Depends(get_db)):
+
     orders = db.query(Order).all()
 
     return [
@@ -113,12 +128,9 @@ def get_orders(db: Session = Depends(get_db)):
     ]
 
 
-# ---------------------------------------------------------
-# Support Ticket Endpoint
-# ---------------------------------------------------------
-
 @app.get("/tickets")
 def get_tickets(db: Session = Depends(get_db)):
+
     tickets = db.query(SupportTicket).all()
 
     return [
@@ -134,19 +146,18 @@ def get_tickets(db: Session = Depends(get_db)):
     ]
 
 
-# ---------------------------------------------------------
-# Ticket Analysis Endpoint
-# ---------------------------------------------------------
-
 @app.get("/tickets/analyze")
 def analyze_tickets(db: Session = Depends(get_db)):
+
     tickets = db.query(SupportTicket).all()
 
     results = []
 
     for ticket in tickets:
 
-        nlp_result = analyze_ticket(ticket.description)
+        nlp_result = analyze_ticket(
+            ticket.description
+        )
 
         priority_result = predict_priority(
             ticket_type=nlp_result["category"],
