@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Customer, Product, Order, SupportTicket
 from app.agent_router import route_question
+from app.sql_tool import execute_analytics
 from ml.ticket_nlp import analyze_ticket
 from ml.priority_predictor import predict_priority
 from rag_pipeline import answer_question
@@ -34,6 +35,7 @@ def chat(request: ChatRequest):
 
     route = route_question(request.question)
 
+    # Knowledge questions → RAG
     if route == "KNOWLEDGE":
 
         result = answer_question(request.question)
@@ -45,17 +47,21 @@ def chat(request: ChatRequest):
             "sources": result["sources"],
         }
 
+    # Analytics questions → SQL tool
     elif route == "ANALYTICS":
+
+        result = execute_analytics(
+            request.question
+        )
 
         return {
             "question": request.question,
             "route": route,
-            "answer": (
-                "This question requires the business "
-                "database analytics tool."
-            ),
+            "answer": result["answer"],
+            "query": result.get("query"),
         }
 
+    # Ticket questions → Ticket analysis
     elif route == "TICKET":
 
         return {
@@ -67,6 +73,7 @@ def chat(request: ChatRequest):
             ),
         }
 
+    # Unsupported questions
     else:
 
         return {
@@ -74,13 +81,16 @@ def chat(request: ChatRequest):
             "route": "UNSUPPORTED",
             "answer": (
                 "I can currently answer company knowledge "
-                "questions and selected business support queries."
+                "questions and selected business analytics "
+                "queries."
             ),
         }
 
 
 @app.get("/customers")
-def get_customers(db: Session = Depends(get_db)):
+def get_customers(
+    db: Session = Depends(get_db)
+):
 
     customers = db.query(Customer).all()
 
@@ -95,7 +105,9 @@ def get_customers(db: Session = Depends(get_db)):
 
 
 @app.get("/products")
-def get_products(db: Session = Depends(get_db)):
+def get_products(
+    db: Session = Depends(get_db)
+):
 
     products = db.query(Product).all()
 
@@ -112,7 +124,9 @@ def get_products(db: Session = Depends(get_db)):
 
 
 @app.get("/orders")
-def get_orders(db: Session = Depends(get_db)):
+def get_orders(
+    db: Session = Depends(get_db)
+):
 
     orders = db.query(Order).all()
 
@@ -129,7 +143,9 @@ def get_orders(db: Session = Depends(get_db)):
 
 
 @app.get("/tickets")
-def get_tickets(db: Session = Depends(get_db)):
+def get_tickets(
+    db: Session = Depends(get_db)
+):
 
     tickets = db.query(SupportTicket).all()
 
@@ -147,7 +163,9 @@ def get_tickets(db: Session = Depends(get_db)):
 
 
 @app.get("/tickets/analyze")
-def analyze_tickets(db: Session = Depends(get_db)):
+def analyze_tickets(
+    db: Session = Depends(get_db)
+):
 
     tickets = db.query(SupportTicket).all()
 

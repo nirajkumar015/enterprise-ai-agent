@@ -20,6 +20,7 @@ def route_question(question: str) -> str:
         "count",
         "average",
         "total",
+        "open tickets",
     ]
 
     ticket_keywords = [
@@ -31,17 +32,18 @@ def route_question(question: str) -> str:
         "analyze",
     ]
 
+    # Analytics comes before general ticket matching
     if any(
-        keyword in question
-        for keyword in ticket_keywords
-    ):
-        return "TICKET"
-
-    elif any(
         keyword in question
         for keyword in analytics_keywords
     ):
         return "ANALYTICS"
+
+    elif any(
+        keyword in question
+        for keyword in ticket_keywords
+    ):
+        return "TICKET"
 
     elif any(
         keyword in question
@@ -59,6 +61,7 @@ if __name__ == "__main__":
         "How long is the refund policy?",
         "How many customers do we have?",
         "Analyze ticket priority",
+        "How many open tickets do we have?",
         "What is the weather today?",
     ]
 
