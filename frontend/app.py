@@ -1,7 +1,10 @@
-﻿import requests
+﻿
+import os
+
+import requests
 import streamlit as st
 
-API_URL = "http://127.0.0.1:8000"
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 st.set_page_config(
     page_title="Enterprise AI Agent",
@@ -34,6 +37,7 @@ def call_api(question):
 
 if page == "AI Knowledge Chat":
     st.header("AI Knowledge Chat")
+
     question = st.text_area(
         "Ask a company question",
         placeholder="What is the refund policy?",
@@ -58,7 +62,13 @@ if page == "AI Knowledge Chat":
                             st.markdown(
                                 f"**{source.get('source', 'Document')}**"
                             )
-                            st.write(source.get("text", ""))
+                            if source.get("text"):
+                                st.write(source["text"])
+                            if source.get("distance") is not None:
+                                st.caption(
+                                    f"Retrieval distance: "
+                                    f"{source['distance']:.4f}"
+                                )
                         else:
                             st.write(source)
 
@@ -82,6 +92,7 @@ elif page == "Business Analytics":
 
         if result:
             st.metric(selected, result.get("answer", "No result"))
+
             if result.get("query"):
                 with st.expander("View SQL"):
                     st.code(result["query"], language="sql")
@@ -89,6 +100,7 @@ elif page == "Business Analytics":
 
 elif page == "Ticket Analyzer":
     st.header("Support Ticket Analyzer")
+
     ticket = st.text_area(
         "Ticket description",
         placeholder="My laptop is broken and I need urgent support.",
@@ -99,29 +111,59 @@ elif page == "Ticket Analyzer":
             st.warning("Enter a ticket description first.")
         else:
             with st.spinner("Analyzing ticket..."):
-                result = call_api(f"Analyze this ticket: {ticket.strip()}")
+                result = call_api(
+                    f"Analyze this ticket: {ticket.strip()}"
+                )
 
             if result:
                 analysis = result.get("ticket_analysis")
 
                 if analysis:
                     col1, col2, col3 = st.columns(3)
-                    col1.metric("Sentiment", analysis.get("sentiment", "Unknown").title())
-                    col2.metric("Category", analysis.get("category", "Unknown").title())
-                    col3.metric("Priority", analysis.get("predicted_priority", "Unknown"))
+
+                    col1.metric(
+                        "Sentiment",
+                        analysis.get("sentiment", "Unknown").title(),
+                    )
+                    col2.metric(
+                        "Category",
+                        analysis.get("category", "Unknown").title(),
+                    )
+                    col3.metric(
+                        "Priority",
+                        analysis.get("predicted_priority", "Unknown"),
+                    )
 
                     confidence = analysis.get("priority_confidence")
                     if confidence is not None:
                         st.write(f"Model confidence: {confidence:.2%}")
 
-                    probabilities = analysis.get("priority_probabilities", {})
+                    probabilities = analysis.get(
+                        "priority_probabilities", {}
+                    )
+
                     if probabilities:
                         st.subheader("Priority probabilities")
-                        st.bar_chart(probabilities)
 
-                    st.info("Model predictions are estimates, not guarantees.")
+                        # Keep the app usable if the chart dependency fails.
+                        try:
+                            st.bar_chart(probabilities)
+                        except (ImportError, ValueError, TypeError) as error:
+                            st.info(
+                                "The probability chart could not be rendered. "
+                                "The raw probabilities are shown below."
+                            )
+                            st.json(probabilities)
+                            st.caption(f"Chart error: {error}")
+
+                    st.info(
+                        "Model predictions are estimates, not guarantees."
+                    )
                 else:
-                    st.warning("Ticket analysis was not returned by the API.")
+                    st.warning(
+                        "Ticket analysis was not returned by the API."
+                    )
+
 
 st.divider()
 st.caption("FastAPI | PostgreSQL | RAG | FAISS | Machine Learning")
